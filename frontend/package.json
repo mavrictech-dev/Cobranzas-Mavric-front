@@ -1,0 +1,44 @@
+{
+  "name": "mavric-cobranzas",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --hostname 127.0.0.1 --port 3000",
+    "build": "next build",
+    "start": "node scripts/serve.mjs 3000",
+    "check": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts",
+    "test:browser": "node tests/browser.mjs && node tests/browser-details.mjs"
+  },
+  "dependencies": {
+    "@fullcalendar/core": "6.1.20",
+    "@fullcalendar/daygrid": "6.1.20",
+    "@fullcalendar/interaction": "6.1.20",
+    "@fullcalendar/list": "6.1.20",
+    "@fullcalendar/luxon3": "6.1.20",
+    "@fullcalendar/react": "6.1.20",
+    "@fullcalendar/timegrid": "6.1.20",
+    "@phosphor-icons/react": "2.1.10",
+    "ag-grid-community": "36.2.0",
+    "ag-grid-react": "36.2.0",
+    "animejs": "4.5.0",
+    "dayjs": "1.11.23",
+    "echarts": "6.1.0",
+    "geist": "1.7.2",
+    "jspdf": "4.2.1",
+    "luxon": "3.7.2",
+    "next": "16.4.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "yup": "1.7.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.0",
+    "@types/node": "26.6.5",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "prettier": "3.9.10",
+    "tsx": "4.23.15",
+    "typescript": "7.0.2"
+  }
+}
