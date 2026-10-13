@@ -1622,6 +1622,175 @@ input[aria-invalid="true"] {
   left: 12px;
   background: var(--surface);
 }
+.frontis-preview > img {
+  max-height: 340px;
+  object-fit: contain;
+  background: var(--subtle);
+}
+.residence-fields {
+  padding: 20px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  min-width: 0;
+}
+.residence-heading,
+.residence-heading > span {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.residence-heading {
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+.residence-heading svg,
+.frontis-placeholder svg {
+  color: var(--muted);
+}
+.residence-heading strong {
+  font-size: 14px;
+}
+.residence-description {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 10px 0 16px;
+}
+.frontis-upload {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 15px;
+  background: var(--subtle);
+  border: 1px dashed var(--line);
+  border-radius: 13px;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.frontis-thumbnail,
+.frontis-placeholder {
+  flex-shrink: 0;
+  width: 76px;
+  height: 84px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+.frontis-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+}
+.frontis-upload-content {
+  min-width: 0;
+  flex: 1;
+}
+.frontis-upload-content > strong,
+.frontis-upload-content > small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.frontis-upload-content > strong {
+  font-size: 12px;
+}
+.frontis-upload-content > small {
+  margin-top: 4px;
+}
+.frontis-upload-content .button-row {
+  margin-top: 10px;
+  gap: 5px;
+}
+.frontis-upload-content .button {
+  font-size: 11px;
+  padding: 7px 9px;
+  min-height: 32px;
+  height: auto;
+}
+.residence-fields > .field {
+  margin-top: 18px;
+}
+.residence-fields > .analyze-photo {
+  width: 100%;
+  margin: 12px 0 0;
+}
+.residence-analysis,
+.residence-point {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 12px;
+  margin-top: 12px;
+  background: var(--subtle);
+  border-radius: 10px;
+  font-size: 11px;
+  line-height: 1.6;
+}
+.residence-analysis > svg,
+.residence-point > svg {
+  flex-shrink: 0;
+  color: var(--accent);
+  margin-top: 2px;
+}
+.residence-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+.residence-actions .button {
+  font-size: 11px;
+  padding: 8px 10px;
+}
+.residence-point {
+  align-items: center;
+  flex-wrap: wrap;
+  font-variant-numeric: tabular-nums;
+}
+.residence-coordinates {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 18px 0;
+}
+.residence-coordinates summary {
+  cursor: pointer;
+}
+.residence-coordinates .form-grid {
+  margin-top: 14px;
+}
+.residence-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+  margin-top: 12px;
+}
+.residence-note > svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.frontis-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 12px;
+  padding: 36px 15px;
+  margin: 18px 0;
+  border-radius: 12px;
+  background: var(--subtle);
+  color: var(--muted);
+  font-size: 12px;
+}
 .schematic-map {
   position: relative;
   overflow: hidden;

@@ -15,7 +15,15 @@ export type Client = {
   tags: string[];
   notes: string;
   archived: boolean;
-  location?: { lat: number; lng: number; confirmed: boolean };
+  location?: {
+    lat: number;
+    lng: number;
+    confirmed: boolean;
+    source?: "photo" | "maps" | "manual";
+  };
+  mapsUrl?: string;
+  mapsConfirmed?: boolean;
+  frontisDocumentId?: string;
   credit: number;
 };
 export type Installment = {

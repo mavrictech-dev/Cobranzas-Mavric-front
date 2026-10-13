@@ -21,8 +21,13 @@ import {
   addMonths,
   currentInstallments,
 } from "./finance";
+import {
+  normalizeMapsUrl,
+  validCoordinates,
+  validateHousePhoto,
+} from "../lib/residence";
 export type Command =
-  | { type: "client.save"; client: Client }
+  | { type: "client.save"; client: Client; photo?: Doc }
   | { type: "client.archive"; id: string; archived: boolean }
   | { type: "loan.save"; loan: Loan }
   | {
@@ -228,7 +233,7 @@ export function execute(input: State, cmd: Command, role: Role): State {
   };
   switch (cmd.type) {
     case "client.save": {
-      const c = cmd.client;
+      const c = structuredClone(cmd.client);
       if (!c.name.trim() || !/^\d{8}$/.test(c.dni) || (!c.phone && !c.email))
         throw new Error(
           "Completa el nombre, DNI de 8 dígitos y un medio de contacto.",
@@ -237,11 +242,35 @@ export function execute(input: State, cmd: Command, role: Role): State {
         throw new Error(
           "Este DNI ya está registrado. Busca el expediente existente.",
         );
+      if (c.mapsUrl) c.mapsUrl = normalizeMapsUrl(c.mapsUrl);
+      if (c.location && !validCoordinates(c.location.lat, c.location.lng))
+        throw new Error("Revisa la latitud y longitud del cliente.");
+      if (cmd.photo) {
+        const photo = cmd.photo;
+        validateHousePhoto({ type: photo.mime, size: photo.size });
+        if (
+          photo.clientId !== c.id ||
+          photo.id !== c.frontisDocumentId ||
+          photo.category !== "Foto de casa"
+        )
+          throw new Error(
+            "La foto del frontis debe pertenecer a este cliente.",
+          );
+        if (
+          state.documents.some((d) => d.id === photo.id && d.clientId !== c.id)
+        )
+          throw new Error("Este archivo pertenece a otro cliente.");
+      }
       const index = state.clients.findIndex((x) => x.id === c.id);
       if (index >= 0) {
         client(c.id);
         state.clients[index] = c;
       } else state.clients.unshift(c);
+      if (cmd.photo) {
+        state.documents = state.documents.filter((d) => d.id !== cmd.photo!.id);
+        state.documents.unshift(cmd.photo);
+        audit(cmd.photo.id);
+      }
       audit(c.id);
       break;
     }

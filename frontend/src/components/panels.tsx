@@ -48,8 +48,16 @@ import {
   downloadPdf,
   getFile,
   putFile,
+  removeFile,
   saveBlob,
 } from "@/lib/export";
+import {
+  clientMapsUrl,
+  frontisDocument,
+  residenceData,
+  residenceDefaults,
+} from "@/lib/residence";
+import { FrontisPreview, ResidenceFields } from "./residence";
 import {
   EditForm,
   type FormField,
@@ -125,7 +133,7 @@ const descriptions: Record<string, [string, string]> = {
   document: ["Documento del expediente", "Consulta el archivo y sus datos."],
   location: [
     "Ubicación del cliente",
-    "Foto de referencia y punto confirmado manualmente.",
+    "Foto del frontis, dirección y punto de Google Maps.",
   ],
   report: [
     "Vista previa del reporte",
@@ -253,9 +261,50 @@ function PanelContent({ panel: p }: { panel: Panel }) {
       return <ConfigurationForm panel={p} />;
   }
 }
+async function saveClientResidence(
+  client: Client,
+  file: File | null,
+  today: string,
+  run: (command: Command) => State,
+) {
+  if (!file) {
+    run({ type: "client.save", client });
+    return;
+  }
+  const doc: Doc = {
+    id: newId("DOC"),
+    clientId: client.id,
+    name: file.name,
+    category: "Foto de casa",
+    size: file.size,
+    mime: file.type,
+    created: today,
+  };
+  await putFile(doc.id, file);
+  try {
+    run({
+      type: "client.save",
+      client: { ...client, frontisDocumentId: doc.id },
+      photo: doc,
+    });
+  } catch (error) {
+    try {
+      await removeFile(doc.id);
+    } catch {
+      /* Preserve the validation error if cleanup is unavailable. */
+    }
+    throw error;
+  }
+}
+
 function ClientForm({ panel }: { panel: Panel }) {
   const { state, run, open, role } = useDemo();
   const existing = state.clients.find((c) => c.id === panel.id);
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [photoWorking, setPhotoWorking] = useState(false);
+  const frontis = existing
+    ? frontisDocument(existing, state.documents)
+    : undefined;
   const defaults = {
     name: existing?.name ?? "",
     dni: existing?.dni ?? "",
@@ -268,6 +317,7 @@ function ClientForm({ panel }: { panel: Panel }) {
     reference: existing?.reference ?? "",
     tags: existing?.tags.join(", ") ?? "",
     notes: existing?.notes ?? "",
+    ...residenceDefaults(existing),
   };
   const fields: FormField[] = [
     { name: "name", label: "Nombres y apellidos", required: true, wide: true },
@@ -279,21 +329,6 @@ function ClientForm({ panel }: { panel: Panel }) {
     },
     { name: "phone", label: "Teléfono", type: "tel" },
     { name: "email", label: "Correo electrónico", type: "email", wide: true },
-    { name: "address", label: "Dirección", wide: true },
-    {
-      name: "district",
-      label: "Distrito",
-      type: "select",
-      options: options([
-        "Miraflores",
-        "San Isidro",
-        "Surco",
-        "San Borja",
-        "La Molina",
-        "Barranco",
-        "Otro",
-      ]),
-    },
     {
       name: "owner",
       label: "Responsable",
@@ -304,7 +339,6 @@ function ClientForm({ panel }: { panel: Panel }) {
           : state.users.filter((u) => u.active).map((u) => u.name),
       ),
     },
-    { name: "reference", label: "Referencia de la vivienda", wide: true },
     {
       name: "tags",
       label: "Etiquetas",
@@ -332,20 +366,36 @@ function ClientForm({ panel }: { panel: Panel }) {
       fields={fields}
       schema={schema}
       label={existing ? "Guardar cambios" : "Guardar cliente"}
-      extra={(v) => {
+      extraAfter="email"
+      submitDisabled={photoWorking}
+      extra={(v, change) => {
         const duplicate = state.clients.find(
           (c) => c.dni === v.dni && c.id !== existing?.id,
         );
-        return duplicate ? (
-          <div className="callout">
-            <p>Ya existe un cliente con este DNI.</p>
-            <Button onClick={() => open({ type: "client", id: duplicate.id })}>
-              Ver cliente existente
-            </Button>
-          </div>
-        ) : null;
+        return (
+          <>
+            <ResidenceFields
+              values={v}
+              change={change}
+              file={photo}
+              onFile={setPhoto}
+              document={frontis}
+              onWorking={setPhotoWorking}
+            />
+            {duplicate && (
+              <div className="callout">
+                <p>Ya existe un cliente con este DNI.</p>
+                <Button
+                  onClick={() => open({ type: "client", id: duplicate.id })}
+                >
+                  Ver cliente existente
+                </Button>
+              </div>
+            )}
+          </>
+        );
       }}
-      onSave={(v) => {
+      onSave={async (v) => {
         const c: Client = {
           ...existing,
           id: existing?.id ?? newId("CLI"),
@@ -353,10 +403,7 @@ function ClientForm({ panel }: { panel: Panel }) {
           dni: v.dni,
           phone: v.phone,
           email: v.email,
-          address: v.address,
-          district: v.district,
           owner: v.owner,
-          reference: v.reference,
           tags: v.tags
             .split(",")
             .map((s) => s.trim())
@@ -364,8 +411,10 @@ function ClientForm({ panel }: { panel: Panel }) {
           notes: v.notes,
           archived: existing?.archived ?? false,
           credit: existing?.credit ?? 0,
+          ...residenceData(v),
+          frontisDocumentId: existing?.frontisDocumentId ?? frontis?.id,
         };
-        run({ type: "client.save", client: c });
+        await saveClientResidence(c, photo, state.business.today, run);
         open({ type: "client", id: c.id });
       }}
     />
@@ -602,21 +651,19 @@ function ClientDetail({ id }: { id: string }) {
         )}
         {tab === "Ubicación" && (
           <>
-            <div className="location-preview">
-              <img
-                src="/fachada-ejemplo.svg"
-                alt="Referencia ilustrada de una fachada ficticia"
-              />
-              <Badge tone="neutral">Referencia ilustrada</Badge>
-            </div>
+            <FrontisPreview document={frontisDocument(c, documents)} />
             <div className="detail-grid">
               <span>
                 <small>Ubicación</small>
                 <Badge>
-                  {c.location?.confirmed
-                    ? "Confirmada manualmente"
+                  {c.location?.confirmed || c.mapsConfirmed
+                    ? "Ubicación confirmada"
                     : "Pendiente"}
                 </Badge>
+              </span>
+              <span>
+                <small>Dirección</small>
+                <span>{c.address || "Pendiente"}</span>
               </span>
               <span>
                 <small>Referencia</small>
@@ -627,6 +674,16 @@ function ClientDetail({ id }: { id: string }) {
               {can(role, "write") ? "Completar ubicación" : "Ver ubicación"}
               <MapPin size={17} />
             </Button>
+            {(c.mapsUrl || c.location || c.address) && (
+              <Button
+                onClick={() =>
+                  window.open(clientMapsUrl(c), "_blank", "noopener,noreferrer")
+                }
+              >
+                Abrir Google Maps
+                <ArrowUpRight size={16} />
+              </Button>
+            )}
           </>
         )}
         {tab === "Gestiones" && (
@@ -2434,219 +2491,101 @@ function ActivityDetail({ id }: { id: string }) {
     </>
   );
 }
+
 function mapsUrl(c: Client) {
-  return (
-    "https://www.google.com/maps/search/?api=1&query=" +
-    encodeURIComponent(
-      c.location?.confirmed
-        ? `${c.location.lat},${c.location.lng}`
-        : `${c.address}, ${c.district}, Lima, Perú`,
-    )
-  );
+  return clientMapsUrl(c);
 }
 function LocationForm({ id }: { id: string }) {
   const { state, run, open, role, notice } = useDemo();
   const c = state.clients.find((x) => x.id === id)!;
-  const [address, setAddress] = useState(c.address);
-  const [lat, setLat] = useState(String(c.location?.lat ?? ""));
-  const [lng, setLng] = useState(String(c.location?.lng ?? ""));
-  const [confirmed, setConfirmed] = useState(c.location?.confirmed ?? false);
+  const [values, setValues] = useState<Values>(() => residenceDefaults(c));
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [photoWorking, setPhotoWorking] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const save = (confirm: boolean) => {
+  const lock = useRef(false);
+  const writable = can(role, "write");
+  const frontis = frontisDocument(c, state.documents);
+  async function save(confirm: boolean) {
+    if (lock.current || photoWorking || !writable) return;
+    lock.current = true;
+    setSaving(true);
+    setError("");
     try {
-      if (
-        confirm &&
-        (!Number.isFinite(Number(lat)) ||
-          !Number.isFinite(Number(lng)) ||
-          !lat ||
-          !lng ||
-          Number(lat) < -90 ||
-          Number(lat) > 90 ||
-          Number(lng) < -180 ||
-          Number(lng) > 180 ||
-          !confirmed)
-      )
+      if (confirm && values.locationConfirmed !== "true")
         throw new Error(
-          "Revisa las coordenadas y marca la confirmación manual del punto.",
+          "Abre el punto en Maps y confirma que corresponde a esta vivienda.",
         );
-      run({
-        type: "client.save",
-        client: {
-          ...c,
-          address,
-          location:
-            lat && lng
-              ? { lat: Number(lat), lng: Number(lng), confirmed: confirm }
-              : undefined,
-        },
+      const residence = residenceData({
+        ...values,
+        locationConfirmed: String(confirm),
       });
+      await saveClientResidence(
+        {
+          ...c,
+          ...residence,
+          frontisDocumentId: c.frontisDocumentId ?? frontis?.id,
+        },
+        photo,
+        state.business.today,
+        run,
+      );
       notice(
         confirm
-          ? "Ubicación confirmada manualmente."
-          : "Ubicación guardada como pendiente.",
+          ? "Ubicación confirmada y foto guardada."
+          : "Foto y ubicación guardadas como pendientes.",
       );
       open({ type: "client", id });
     } catch (e) {
       setError((e as Error).message);
+    } finally {
+      lock.current = false;
+      setSaving(false);
     }
-  };
+  }
   return (
-    <>
-      <form
-        className="panel-form"
-        onSubmit={(e) => {
-          e.preventDefault();
-          save(true);
-        }}
-      >
-        <div className="drawer-content">
-          <div className="location-preview">
-            <img
-              src="/fachada-ejemplo.svg"
-              alt="Referencia ilustrada ficticia"
-            />
-            <Badge tone="neutral">Imagen ilustrativa</Badge>
-          </div>
-          <Button
-            onClick={() => open({ type: "document-new", clientId: id })}
-            disabled={!can(role, "write")}
-          >
-            <UploadSimple size={16} />
-            Añadir foto de casa
-          </Button>
-          <Field label="Dirección">
-            <input
-              value={address}
-              onChange={(e) => {
-                setAddress(e.target.value);
-                setConfirmed(false);
-              }}
-              disabled={!can(role, "write")}
-            />
-          </Field>
-          <div
-            className="schematic-map"
-            aria-label="Plano ilustrativo, sin geocodificación real"
-          >
-            <div className="map-road r1" />
-            <div className="map-road r2" />
-            <div className="map-road r3" />
-            <span className="map-pin">
-              <MapPin size={30} weight="fill" />
-            </span>
-            <span className="map-caption">
-              Punto de ejemplo · plano ilustrativo
-            </span>
-          </div>
-          <div className="form-grid">
-            <Field label="Latitud">
-              <input
-                type="number"
-                step="any"
-                value={lat}
-                onChange={(e) => {
-                  setLat(e.target.value);
-                  setConfirmed(false);
-                }}
-                disabled={!can(role, "write")}
-              />
-            </Field>
-            <Field label="Longitud">
-              <input
-                type="number"
-                step="any"
-                value={lng}
-                onChange={(e) => {
-                  setLng(e.target.value);
-                  setConfirmed(false);
-                }}
-                disabled={!can(role, "write")}
-              />
-            </Field>
-          </div>
-          <div className="button-row">
+    <form
+      className="panel-form"
+      onSubmit={(e) => {
+        e.preventDefault();
+        void save(true);
+      }}
+    >
+      <div className="drawer-content">
+        <ResidenceFields
+          values={values}
+          change={setValues}
+          file={photo}
+          onFile={setPhoto}
+          document={frontis}
+          onWorking={setPhotoWorking}
+          readOnly={!writable}
+        />
+        <FormError message={error} />
+      </div>
+      <PanelFooter>
+        {writable && (
+          <>
             <Button
-              disabled={!address || !can(role, "write")}
-              onClick={() => {
-                setLat("-12.1200");
-                setLng("-77.0300");
-                setConfirmed(false);
-                notice(
-                  "Propuesta simulada. Ajusta las coordenadas y confirma el punto manualmente.",
-                );
-              }}
+              onClick={() => void save(false)}
+              disabled={saving || photoWorking}
             >
-              Proponer punto de ejemplo
+              Guardar pendiente
             </Button>
             <Button
-              onClick={() =>
-                window.open(
-                  mapsUrl({
-                    ...c,
-                    address,
-                    location:
-                      lat && lng
-                        ? { lat: Number(lat), lng: Number(lng), confirmed }
-                        : undefined,
-                  }),
-                  "_blank",
-                  "noopener,noreferrer",
-                )
-              }
+              type="submit"
+              variant="primary"
+              disabled={saving || photoWorking}
             >
-              Abrir Google Maps
-              <ArrowUpRight size={15} />
+              {saving ? "Guardando…" : "Confirmar punto"}
             </Button>
-          </div>
-          <label className="checkbox-label">
-            <input
-              type="checkbox"
-              checked={confirmed}
-              onChange={(e) => setConfirmed(e.target.checked)}
-              disabled={!can(role, "write")}
-            />
-            Confirmo manualmente estas coordenadas
-          </label>
-          <div className="callout">
-            <p>
-              Una foto no ubica automáticamente la vivienda. Aquí se conserva la
-              referencia y se confirma un punto. La propuesta de dirección está
-              simulada.
-            </p>
-          </div>
-          <Button
-            variant="ghost"
-            onClick={async () => {
-              try {
-                await navigator.clipboard.writeText(mapsUrl({ ...c, address }));
-                notice("Enlace copiado.");
-              } catch {
-                notice(
-                  "El navegador no permitió copiar. Puedes abrir el enlace en Maps.",
-                );
-              }
-            }}
-          >
-            Copiar enlace
-          </Button>
-          <FormError message={error} />
-        </div>
-        <PanelFooter>
-          <Button onClick={() => save(false)} disabled={!can(role, "write")}>
-            Guardar pendiente
-          </Button>
-          <Button
-            type="submit"
-            variant="primary"
-            disabled={!can(role, "write")}
-          >
-            Confirmar punto
-          </Button>
-        </PanelFooter>
-      </form>
-    </>
+          </>
+        )}
+      </PanelFooter>
+    </form>
   );
 }
+
 function DocumentForm({ panel }: { panel: Panel }) {
   const { state, run, open } = useDemo();
   const { clients } = useVisible();

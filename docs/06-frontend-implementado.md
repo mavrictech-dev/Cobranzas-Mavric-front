@@ -13,7 +13,7 @@ Fecha: 12 de octubre de 2026. Código: `../frontend/`. Esta entrega implementa u
 - Crédito a favor: excedente explícito, aplicación sin duplicar ingresos y registro de devolución.
 - Calendario FullCalendar con mes/semana/día/agenda, cuotas derivadas, actividades, movimiento confirmado y promesas vinculadas a pagos.
 - Archivos locales en IndexedDB, carga JPG/PNG/WebP/PDF, previsualización y descarga; referencias ilustradas para los ejemplos iniciales.
-- Ubicación con coordenadas editables, confirmación manual y enlaces a Google Maps; propuesta de punto identificada como simulada.
+- Foto del frontis en el alta y edición del cliente, miniatura y archivo vinculado al expediente en IndexedDB. Lectura real de GPS EXIF en el navegador, enlace de Maps generado y confirmación manual; sin GPS se completa por dirección, enlace compartido o coordenadas. El punto de ejemplo simulado se retiró.
 - Reportes PDF/CSV y correo de ejemplo con éxito, fallo, resultado desconocido y reintento controlado.
 - Roles de presentación Dueño/Jefe/Cobrador/Consulta y bloqueo de operaciones no autorizadas dentro del adaptador mock.
 
@@ -30,6 +30,8 @@ Las fechas de las cuotas son de negocio, separadas de los horarios de visita. El
 Ejecutar `Iniciar presentacion.cmd` en la carpeta principal. Abrirá el navegador en la dirección local y mantendrá el servidor de archivos en una ventana. Cerrarla detiene esa sesión. El código y los pasos de desarrollo están descritos en `../frontend/README.md`.
 
 ## Verificación
+
+Actualización del 13/10/2026: las pruebas de vivienda comprueban GPS EXIF real, enlaces de Maps, ubicación pendiente sin coordenadas inventadas, y guardado atómico de cliente y foto. El recorrido de navegador cubre carga, análisis, confirmación y foto disponible tras recarga.
 
 Se utilizan pruebas de reglas de negocio para redondeo, pagos, duplicados, conflicto de saldo, reversos, crédito a favor, reprogramación, promesas, permisos y recordatorios. Las pruebas de navegador verifican rutas, temas, recorrido numérico, altas, duplicados, calendario, navegación, archivos y descargas. Las capturas quedan en `../frontend/qa/`.
 

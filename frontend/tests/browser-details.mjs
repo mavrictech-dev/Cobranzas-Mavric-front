@@ -146,11 +146,14 @@ try {
   await d()
     .getByRole("button", { name: "Completar ubicación", exact: true })
     .click();
+  await d().getByText("Editar coordenadas", { exact: true }).click();
+  await d().getByLabel("Latitud", { exact: true }).fill("-12.12");
+  await d().getByLabel("Longitud", { exact: true }).fill("-77.03");
   await d()
-    .getByRole("button", { name: "Proponer punto de ejemplo", exact: true })
-    .click();
-  await d()
-    .getByLabel("Confirmo manualmente estas coordenadas", { exact: true })
+    .getByLabel(
+      "Confirmo que el punto de Google Maps corresponde a esta vivienda",
+      { exact: true },
+    )
     .check();
   await d()
     .getByRole("button", { name: "Confirmar punto", exact: true })

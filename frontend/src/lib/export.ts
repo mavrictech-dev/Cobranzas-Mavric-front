@@ -85,6 +85,19 @@ export async function getFile(id: string): Promise<Blob | undefined> {
   db.close();
   return result;
 }
+export async function removeFile(id: string) {
+  const db = await openDb();
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction("files", "readwrite");
+      tx.objectStore("files").delete(id);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  } finally {
+    db.close();
+  }
+}
 async function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open("mavric-documents", 1);
